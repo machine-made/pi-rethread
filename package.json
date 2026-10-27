@@ -1,0 +1,65 @@
+{
+  "name": "pi-rethread",
+  "version": "0.1.0",
+  "author": "Ricardo Frantz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/machine-made/pi-rethread.git"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typebox": "1.3.27",
+    "typescript": "^5.9.0"
+  },
+  "bugs": {
+    "url": "https://github.com/machine-made/pi-rethread/issues"
+  },
+  "description": "Pi extension: the agent finishes its step, writes a letter and a ledger entry, and the work continues in a fresh session",
+  "files": [
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "index.ts",
+    "rethread.ts",
+    "prompts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/machine-made/pi-rethread#readme",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "pi-coding-agent",
+    "llm",
+    "developer-tools",
+    "context",
+    "handoff",
+    "ledger",
+    "session"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "type": "module",
+  "packageManager": "bun@1.3.13"
+}
