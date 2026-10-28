@@ -3,7 +3,7 @@
 Extension for [pi](https://github.com/earendil-works/pi): when a session gets long, the agent finishes its step, writes a **letter** to the next session and a **ledger** entry, and the work continues in a **fresh session**. No lossy compaction.
 
 ```text
-pi install npm:pi-rethread
+pi install npm:@machine-made/pi-rethread
 ```
 
 Tested with Pi 1.4.0.
