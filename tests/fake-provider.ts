@@ -1,6 +1,7 @@
 // Test-only Pi extension: a scripted model, so the integration test runs real Pi with no API calls.
 // Env: FAKE_CTX (context window), FAKE_PAD (chars of padding in ordinary replies),
-//      FAKE_TPS (simulated typing speed), FAKE_SKIP_TOOL=1 (the agent ignores the write request, to exercise the fallback).
+//      FAKE_TPS (simulated typing speed), FAKE_SKIP_TOOL=1 (the agent ignores the write request, to exercise the
+//      fallback), FAKE_REJECT_WRITE=1 (the provider rejects the first write request as too long).
 import { createFauxCore, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -16,10 +17,18 @@ export default function (pi: ExtensionAPI) {
 		...(process.env.FAKE_TPS ? { tokensPerSecond: Number(process.env.FAKE_TPS) } : {}),
 	});
 	let writes = 0;
+	let rejected = false;
 	const respond = (context: unknown) => {
 		const all = JSON.stringify(context);
 		const msgs = (context as { messages?: unknown[] }).messages ?? [];
 		const last = JSON.stringify(msgs.at(-1) ?? {});
+		if (all.includes("You are a context summarization assistant")) {
+			return fauxAssistantMessage("## Goal\nPI-COMPACTION-SUMMARY");
+		}
+		if (process.env.FAKE_REJECT_WRITE === "1" && !rejected && last.includes("[rethread 2/2: write]")) {
+			rejected = true; // the provider refuses this request once, as a real one does when it is too long
+			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is too long: 70000 tokens > 60000 maximum" });
+		}
 		if (all.includes("You write a handoff so a fresh coding-agent session")) {
 			return fauxAssistantMessage(`## Letter\nYou: summary letter.\n\n## Ledger\n${LEDGER("SUMMARY")}`);
 		}

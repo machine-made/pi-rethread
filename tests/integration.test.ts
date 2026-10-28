@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
@@ -26,9 +26,14 @@ class Pi {
 		env: Record<string, string> = {},
 		flags: string[] = [],
 	) {
+		// Hermetic: Pi reads ~/.agents/skills and PI_* variables from the real environment, which
+		// changes the system prompt size and so which compaction path Pi takes. Give it an empty home.
+		const home = join(cwd, ".home");
+		mkdirSync(home, { recursive: true });
+		const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("PI_")));
 		this.p = spawn(PI, ["--mode", "rpc", "-e", EXT, "-e", FAKE, "--provider", "fake", "--model", "fake-1", ...flags], {
 			cwd,
-			env: { ...process.env, PI_CODING_AGENT_DIR: join(cwd, ".agent"), PI_OFFLINE: "1", ...env },
+			env: { ...base, HOME: home, USERPROFILE: home, PI_CODING_AGENT_DIR: join(cwd, ".agent"), PI_OFFLINE: "1", ...env },
 		});
 		createInterface({ input: this.p.stdout }).on("line", (line) => {
 			let m: Json;
@@ -196,6 +201,40 @@ test("Pi's auto-compaction is replaced by a rethread", async () => {
 	}
 });
 
+test("a reply past the whole window (silent overflow): rethread, no compaction mid-handoff", async () => {
+	// A 70k-token reply in a 60k window: Pi first tries "threshold", then "overflow" with nothing to
+	// retry after the land reply. Neither may compact the old session while the agent writes its letter.
+	const cwd = tmp("o");
+	const pi = new Pi(cwd, { FAKE_CTX: "60000", FAKE_PAD: "280000" });
+	try {
+		const s0 = await pi.prompt("Start", 4000);
+		const first = (pi.events.find((e) => e.command === "get_state") as Json).data.sessionFile;
+		assert.notEqual(s0.sessionFile, first, "moved to a new session");
+		assert.ok(!readFileSync(first, "utf8").includes('"type":"compaction"'), "old session not compacted");
+		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /written by the agent/);
+		assert.match(await pi.lastText(), /^READBACK/);
+	} finally {
+		pi.close();
+	}
+});
+
+test("the provider rejects the write as too long: Pi's recovery compacts, retries, the move still happens", async () => {
+	const cwd = tmp("r");
+	const pi = new Pi(cwd, { FAKE_REJECT_WRITE: "1", FAKE_PAD: "160000" }, ["--rethread-auto-percent", "0"]); // ~40k tokens: enough history for Pi to compact
+	try {
+		const s0 = await pi.prompt("Start");
+		const s1 = await pi.prompt("/rethread", 3000);
+		const old = readFileSync(s0.sessionFile, "utf8");
+		assert.match(old, /prompt is too long/, "the rejection happened");
+		assert.ok(old.includes('"type":"compaction"'), "Pi's recovery was allowed to compact");
+		assert.notEqual(s1.sessionFile, s0.sessionFile, "moved to a new session");
+		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /written by the agent/);
+		assert.match(await pi.lastText(), /^READBACK/);
+	} finally {
+		pi.close();
+	}
+});
+
 test("hostile: a fresh session already over the limit does not loop", async () => {
 	const cwd = tmp("f");
 	const pi = new Pi(cwd, { FAKE_CTX: "3000" }, ["--rethread-auto-percent", "10"]);
@@ -228,7 +267,7 @@ test("below the threshold nothing happens; --cancel stops a rethread", async () 
 
 test("project templates in .pi/rethread override the packaged ones", async () => {
 	const cwd = tmp("h");
-	const { mkdirSync, writeFileSync } = await import("node:fs");
+	const { writeFileSync } = await import("node:fs");
 	mkdirSync(join(cwd, ".pi", "rethread"), { recursive: true });
 	writeFileSync(join(cwd, ".pi", "rethread", "kickoff.md"), "CUSTOM KICKOFF {{letter}} <rethread-ledger>{{ledger}}</rethread-ledger>");
 	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
