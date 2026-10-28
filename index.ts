@@ -306,10 +306,12 @@ export default function rethread(pi: ExtensionAPI) {
 		pendingAuto = false;
 	});
 
-	// Pi's own automatic compaction becomes a rethread. Manual /compact and overflow recovery
-	// (which must retry the failed turn) are left alone.
+	// Pi's automatic compaction becomes a rethread: at the threshold, and after a reply that
+	// silently went past the window (reason "overflow", nothing to retry). Left alone: manual
+	// /compact, and recovery of a request the provider rejected as too long (willRetry), which
+	// must compact to retry the failed turn.
 	pi.on("session_before_compact", async (event) => {
-		if (event.reason !== "threshold") return;
+		if (event.reason === "manual" || event.willRetry) return;
 		if (phase !== "idle") return { cancel: true }; // we are leaving this session anyway
 		if (threshold() <= 0 || autoDisabled || autoFired) return;
 		pendingAuto = true;

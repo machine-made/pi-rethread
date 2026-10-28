@@ -44,7 +44,12 @@ transcript instead, and the move still happens.
 
 After a run, if context use is at or above `--rethread-auto-percent` (default 70), `/rethread`
 starts by itself. When Pi would auto-compact first, the compaction is cancelled and a rethread
-runs instead. Manual `/compact` and overflow recovery are left alone.
+runs instead. This covers Pi's threshold and a reply that silently went past the window. No
+automatic compaction touches the old session while the agent writes its handoff.
+
+Left alone: manual `/compact`, and Pi's recovery when the provider rejects a request as too long.
+That recovery compacts and retries the failed turn; without it the turn cannot run. The rethread
+then continues, and the agent writes its letter from the compacted session.
 
 It fires once per session. If a new session is already over the limit right after the handoff
 (a low limit, a long ledger), the automatic rethread turns itself off for that session and says so,
