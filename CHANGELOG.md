@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-28
+
 ### Changed
 - The package name in the repository is `@machine-made/pi-rethread`, the name 0.1.0 is published under on npm.
 
