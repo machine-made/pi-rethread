@@ -82,7 +82,9 @@ test("templates: packaged ones load and fill; project override wins", () => {
 	for (const name of ["pack", "unpack", "summary"] as const) assert.ok(loadTemplate(name, dir).length > 50, name);
 	const pack = fill(loadTemplate("pack", dir), { tool: "rethread_pack", headings: headingsList(), goal_line: "G", previous: "(none)", letter_shape: "SHAPE" });
 	assert.ok(!/\{\{\w+\}\}/.test(pack), "all placeholders filled");
-	assert.ok(pack.indexOf("letter") < pack.indexOf("**`entry`**"), "letter is asked for before the entry");
+	assert.ok(pack.includes("SHAPE"), "{{letter_shape}} is filled");
+	assert.ok(pack.indexOf("**`letter`**") > 0, "the letter field is named exactly");
+	assert.ok(pack.indexOf("**`letter`**") < pack.indexOf("**`entry`**"), "letter is asked for before the entry");
 	const unpack = fill(loadTemplate("unpack", dir), { ledger_path: "p", letter: "L", goal_line: "G", status: "landed", ledger: LEDGER });
 	assert.ok(isUnpack(unpack));
 	assert.ok(!/\{\{\w+\}\}/.test(unpack));
@@ -90,7 +92,7 @@ test("templates: packaged ones load and fill; project override wins", () => {
 	writeFileSync(join(dir, ".pi", "rethread", "pack.md"), "MY PACK");
 	assert.equal(loadTemplate("pack", dir), "MY PACK");
 	assert.equal(fill("a {{x}} {{unknown}}", { x: "1" }), "a 1 {{unknown}}");
-})
+});
 
 test("the letter shape has one source: pack and summary use LETTER_SHAPE", () => {
 	const dir = mkdtempSync(join(tmpdir(), "rethread-shape-"));

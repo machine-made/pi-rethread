@@ -2,6 +2,8 @@
 // Env: FAKE_CTX (context window), FAKE_PAD (chars of padding in ordinary replies),
 //      FAKE_TPS (simulated typing speed), FAKE_SKIP_TOOL=1 (the agent ignores the pack request, to exercise the
 //      fallback), FAKE_REJECT_WRITE=1 (the provider rejects the first pack request as too long).
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createFauxCore, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -30,6 +32,8 @@ export default function (pi: ExtensionAPI) {
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is too long: 70000 tokens > 60000 maximum" });
 		}
 		if (all.includes("You write a handoff so a fresh coding-agent session")) {
+			// Keep the side model's exact prompt so a test can check what it was given.
+			writeFileSync(join(process.cwd(), ".fake-summary-context.json"), all);
 			return fauxAssistantMessage(`## Letter\nYou: summary letter.\n\n## Ledger\n${LEDGER("SUMMARY")}`);
 		}
 		if (last.includes("toolResult") && last.includes("Saved. Stop now")) return fauxAssistantMessage("Done.");

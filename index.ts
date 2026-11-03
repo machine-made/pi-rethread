@@ -88,6 +88,7 @@ export default function rethread(pi: ExtensionAPI) {
 	let saved: Omit<Handoff, "goal" | "source"> | undefined;
 	let auto: "ready" | "pending" | "fired" | "off" = "ready";
 	let unpackRun = false;
+
 	const threshold = () => parseThreshold(pi.getFlag("rethread-auto-percent"));
 	const ledgerFile = (cwd: string) => resolveLedgerPath(cwd, pi.getFlag("rethread-ledger"));
 	const previousLedger = (cwd: string) => {
@@ -106,7 +107,6 @@ export default function rethread(pi: ExtensionAPI) {
 		saved = undefined;
 		setTool(false);
 	};
-
 
 	pi.registerTool({
 		name: TOOL_NAME,
@@ -294,7 +294,6 @@ export default function rethread(pi: ExtensionAPI) {
 			ctx.ui.notify(n ? `Ledger: ${file} (${n} entries)` : `No ledger yet (${file})`, "info");
 		},
 	});
-
 
 	// Pi's automatic compaction becomes a rethread: at the threshold, and after a reply that
 	// silently went past the window (reason "overflow", nothing to retry). Left alone: manual

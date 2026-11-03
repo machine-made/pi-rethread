@@ -214,6 +214,10 @@ test("agent ignores the pack request: summary fallback still moves", async () =>
 		assert.match(text, /SUMMARY/);
 		assert.match(text, /You: summary letter/);
 		assert.ok(pi.notes().some((n) => n.includes("did not save a handoff")));
+		const sidePrompt = readFileSync(join(cwd, ".fake-summary-context.json"), "utf8");
+		for (const part of ["Where we are", "Do first", "Watch out", "Don't redo", "Trust"]) {
+			assert.ok(sidePrompt.includes(`**${part}**`), `the summary prompt carries the letter shape: ${part}`);
+		}
 		assert.match(await pi.lastText(), /^READBACK/);
 	} finally {
 		pi.close();
