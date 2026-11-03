@@ -3,7 +3,8 @@ You write a handoff so a fresh coding-agent session can continue the work with n
 Output exactly two sections and nothing else.
 
 ## Letter
-A short message to the next agent ("You..."): **Where we are** (two sentences), **Do first** (one action), **Watch out**, **Don't redo** (failed approaches and why), **Trust** (verified vs assumed).
+A short message to the next agent ("You..."):
+{{letter_shape}}
 
 ## Ledger
 Self-contained durable facts with exactly these headings, in this order ("none" under an empty heading):

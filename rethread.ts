@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const ENTRY_MARK = "<!-- ledger-entry -->";
 const DEFAULT_LEDGER = ".pi/ledger.md";
 export const DEFAULT_AUTO_PERCENT = 70;
-export const TOOL_NAME = "rethread_save";
+export const TOOL_NAME = "rethread_pack";
 const KICKOFF_TAG = "rethread-ledger";
 const OVERRIDE_DIR = ".pi/rethread";
 export const USAGE = "Usage: /rethread [goal for the next session] [--now] [--cancel]";
@@ -15,7 +15,14 @@ const LEDGER_HEADINGS = ["Goal", "Done", "Decisions", "Files", "Commands", "Open
 export const STATUSES = ["landed", "partial", "blocked"] as const;
 export type Status = (typeof STATUSES)[number];
 
-export type TemplateName = "land" | "write" | "kickoff" | "summary";
+export type TemplateName = "pack" | "kickoff" | "summary";
+
+export const LETTER_SHAPE =
+	"- **Where we are**: two sentences.\n" +
+	"- **Do first**: one concrete action.\n" +
+	"- **Watch out**: traps, flaky tests, things that look right but are not.\n" +
+	"- **Don't redo**: approaches already tried that failed, and why.\n" +
+	"- **Trust**: what is verified and what is only assumed.";
 
 const PACKAGE_PROMPTS = join(dirname(fileURLToPath(import.meta.url)), "prompts");
 

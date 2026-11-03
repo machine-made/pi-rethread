@@ -78,18 +78,18 @@ test("readEntries on a missing file", () => {
 
 test("templates: packaged ones load and fill; project override wins", () => {
 	const dir = mkdtempSync(join(tmpdir(), "rethread-tpl-"));
-	for (const name of ["land", "write", "kickoff", "summary"] as const) assert.ok(loadTemplate(name, dir).length > 50, name);
-	const write = fill(loadTemplate("write", dir), { tool: "rethread_save", headings: headingsList(), goal_line: "G", previous: "(none)" });
-	assert.ok(!/\{\{\w+\}\}/.test(write), "all placeholders filled");
-	assert.ok(write.indexOf("next_message") < write.indexOf("**`ledger`**"), "letter is asked for before the ledger");
+	for (const name of ["pack", "kickoff", "summary"] as const) assert.ok(loadTemplate(name, dir).length > 50, name);
+	const pack = fill(loadTemplate("pack", dir), { tool: "rethread_save", headings: headingsList(), goal_line: "G", previous: "(none)", letter_shape: "SHAPE" });
+	assert.ok(!/\{\{\w+\}\}/.test(pack), "all placeholders filled");
+	assert.ok(pack.indexOf("letter") < pack.indexOf("**`entry`**"), "letter is asked for before the entry");
 	const kick = fill(loadTemplate("kickoff", dir), { ledger_path: "p", letter: "L", goal_line: "G", status: "landed", ledger: LEDGER });
 	assert.ok(isKickoff(kick));
 	assert.ok(!/\{\{\w+\}\}/.test(kick));
 	mkdirSync(join(dir, ".pi", "rethread"), { recursive: true });
-	writeFileSync(join(dir, ".pi", "rethread", "land.md"), "MY LAND");
-	assert.equal(loadTemplate("land", dir), "MY LAND");
+	writeFileSync(join(dir, ".pi", "rethread", "pack.md"), "MY PACK");
+	assert.equal(loadTemplate("pack", dir), "MY PACK");
 	assert.equal(fill("a {{x}} {{unknown}}", { x: "1" }), "a 1 {{unknown}}");
-});
+})
 
 test("splitSummary and looksLikeLedger", () => {
 	const s = splitSummary(`## Letter\nYou: hi\n\n## Ledger\n${LEDGER}`);

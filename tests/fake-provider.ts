@@ -25,27 +25,24 @@ export default function (pi: ExtensionAPI) {
 		if (all.includes("You are a context summarization assistant")) {
 			return fauxAssistantMessage("## Goal\nPI-COMPACTION-SUMMARY");
 		}
-		if (process.env.FAKE_REJECT_WRITE === "1" && !rejected && last.includes("[rethread 2/2: write]")) {
-			rejected = true; // the provider refuses this request once, as a real one does when it is too long
+		if (process.env.FAKE_REJECT_WRITE === "1" && !rejected && last.includes("[rethread: pack]")) {
+			rejected = true;
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is too long: 70000 tokens > 60000 maximum" });
 		}
 		if (all.includes("You write a handoff so a fresh coding-agent session")) {
 			return fauxAssistantMessage(`## Letter\nYou: summary letter.\n\n## Ledger\n${LEDGER("SUMMARY")}`);
 		}
 		if (last.includes("toolResult") && last.includes("Saved. Stop now")) return fauxAssistantMessage("Done.");
-		if (last.includes("[rethread 1/2: land]")) {
-			return fauxAssistantMessage("LANDED. Verified: build. Assumed: nothing.");
-		}
-		if (last.includes("[rethread 2/2: write]")) {
+		if (last.includes("[rethread: pack]")) {
 			if (process.env.FAKE_SKIP_TOOL === "1") return fauxAssistantMessage("I will not call the tool.");
 			writes++;
 			const sawPrevious = last.includes("AGENT-1") ? "saw-previous" : "no-previous";
 			return fauxAssistantMessage([
 				fauxText("Writing the handoff."),
-				fauxToolCall("rethread_save", {
+				fauxToolCall("rethread_pack", {
 					status: "partial",
-					next_message: `You: LETTER-${writes}. Do first: write the flag in src/cli.ts.`,
-					ledger: LEDGER(`AGENT-${writes} ${sawPrevious}`),
+					letter: `You: LETTER-${writes}. Do first: write the flag in src/cli.ts.`,
+					entry: LEDGER(`AGENT-${writes} ${sawPrevious}`),
 				}),
 			]);
 		}

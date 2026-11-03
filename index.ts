@@ -31,6 +31,7 @@ import {
 	isKickoff,
 	loadTemplate,
 	looksLikeLedger,
+	LETTER_SHAPE,
 	parseArgs,
 	parseThreshold,
 	readEntries,
@@ -43,7 +44,7 @@ import {
 	USAGE,
 } from "./rethread.ts";
 
-type Phase = "idle" | "land" | "write" | "move";
+type Phase = "idle" | "wait" | "pack" | "move";
 
 function entryToMessage(entry: SessionEntry): AgentMessage | undefined {
 	if (entry.type === "message") return entry.message;
@@ -107,39 +108,35 @@ export default function rethread(pi: ExtensionAPI) {
 		setTool(false);
 	};
 
-	const send = (ctx: ExtensionContext, text: string) => {
-		if (ctx.isIdle()) pi.sendUserMessage(text);
-		else pi.sendUserMessage(text, { deliverAs: "followUp" });
-	};
 
 	pi.registerTool({
 		name: TOOL_NAME,
-		label: "Rethread: save handoff",
+		label: "Rethread: pack",
 		description:
 			"Save the handoff for the next session: a letter to the next agent, then the ledger entry. Only call this when a [rethread] message asks you to.",
 		parameters: Type.Object({
 			status: StringEnum(STATUSES, { description: "landed | partial | blocked" }),
-			next_message: Type.String({ description: "Letter to the next session's agent. Written first." }),
-			ledger: Type.String({ description: "Self-contained ledger entry with the required headings." }),
+			letter: Type.String({ description: "Letter to the next session's agent. Written first." }),
+			entry: Type.String({ description: "Self-contained ledger entry with the required headings." }),
 		}),
 		defaultActive: false,
 		async execute(_id, params) {
-			if (phase !== "write") {
+			if (phase !== "pack") {
 				return {
 					content: [{ type: "text", text: "No rethread is in progress; nothing was saved." }],
 					details: { saved: false },
 				};
 			}
 			const problems: string[] = [];
-			if (!params.next_message.trim()) problems.push("next_message is empty");
-			if (!looksLikeLedger(params.ledger)) problems.push("ledger is missing the required ### headings");
+			if (!params.letter.trim()) problems.push("letter is empty");
+			if (!looksLikeLedger(params.entry)) problems.push("entry is missing the required ### headings");
 			if (problems.length) {
 				return {
 					content: [{ type: "text", text: `Not saved: ${problems.join("; ")}. Call ${TOOL_NAME} again.` }],
 					details: { saved: false },
 				};
 			}
-			saved = { status: params.status as Status, letter: params.next_message, ledger: params.ledger };
+			saved = { status: params.status as Status, letter: params.letter, ledger: params.entry };
 			return {
 				content: [{ type: "text", text: "Saved. Stop now: the next session starts when you finish." }],
 				details: { saved: true },
@@ -161,7 +158,7 @@ export default function rethread(pi: ExtensionAPI) {
 			"## User's goal for the next session",
 			goal || "(none given: continue the work)",
 		].join("\n");
-		const system = fill(loadTemplate("summary", ctx.cwd), { headings: headingsList() });
+		const system = fill(loadTemplate("summary", ctx.cwd), { headings: headingsList(), letter_shape: LETTER_SHAPE });
 		const run = async (signal?: AbortSignal) => {
 			const user: Message = { role: "user", content: [{ type: "text", text: prompt }], timestamp: Date.now() };
 			const res = await ctx.modelRegistry.complete(
@@ -245,7 +242,7 @@ export default function rethread(pi: ExtensionAPI) {
 				return;
 			}
 			if (a.switchNow) {
-				if (phase === "write") await move(ctx);
+				if (phase === "pack") await move(ctx);
 				return;
 			}
 			if (phase !== "idle") {
@@ -266,11 +263,29 @@ export default function rethread(pi: ExtensionAPI) {
 				await move(ctx);
 				return;
 			}
-			phase = "land";
-			ctx.ui.notify("rethread 1/3: asking the agent to finish its step", "info");
-			send(ctx, loadTemplate("land", ctx.cwd).trim());
+			if (ctx.isIdle()) {
+				await startPack(ctx);
+				return;
+			}
+			phase = "wait";
+			ctx.ui.notify("rethread: letting the agent finish; do not send new instructions until the handoff is done", "info");
 		},
 	});
+
+	async function startPack(ctx: ExtensionContext): Promise<void> {
+		phase = "pack";
+		setTool(true);
+		ctx.ui.notify("rethread: pack", "info");
+		pi.sendUserMessage(
+			fill(loadTemplate("pack", ctx.cwd), {
+				tool: TOOL_NAME,
+				headings: headingsList(),
+				goal_line: goalLine(goal, true),
+				previous: previousLedger(ctx.cwd) || "(none)",
+				letter_shape: LETTER_SHAPE,
+			}),
+		);
+	}
 
 	pi.registerCommand("ledger", {
 		description: "Show the ledger file and its number of entries",
@@ -300,22 +315,12 @@ export default function rethread(pi: ExtensionAPI) {
 
 	pi.on("agent_settled", async (_event, ctx) => {
 		// Advance a rethread in progress. Prompts sent here are deferred by Pi until settling ends.
-		if (phase === "land") {
-			phase = "write";
-			setTool(true);
-			ctx.ui.notify("rethread 2/3: asking for the letter and the ledger", "info");
-			pi.sendUserMessage(
-				fill(loadTemplate("write", ctx.cwd), {
-					tool: TOOL_NAME,
-					headings: headingsList(),
-					goal_line: goalLine(goal, true),
-					previous: previousLedger(ctx.cwd) || "(none)",
-				}),
-			);
+		if (phase === "wait") {
+			await startPack(ctx);
 			return;
 		}
-		if (phase === "write") {
-			ctx.ui.notify("rethread 3/3: moving to a new session", "info");
+		if (phase === "pack") {
+			ctx.ui.notify("rethread: move", "info");
 			pi.sendUserMessage("/rethread --switch", { expandPromptTemplates: true });
 			return;
 		}

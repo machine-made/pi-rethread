@@ -111,8 +111,8 @@ test("/rethread: land, letter + ledger by the agent, new session, readback", asy
 		assert.match(text, /### Letter to the next session\nYou: LETTER-1/);
 
 		const old = readFileSync(s0.sessionFile, "utf8");
-		assert.ok(old.indexOf("[rethread 1/2: land]") < old.indexOf("[rethread 2/2: write]"), "land before write");
-		assert.match(old, /LANDED\. Verified/);
+		assert.ok(old.includes("[rethread: pack]"), "pack message sent");
+		// In the new flow, the agent calls the tool directly without a separate "LANDED" text response
 
 		const users = await pi.userMessages();
 		assert.equal(users.length, 1, "new session starts with the kickoff only");
