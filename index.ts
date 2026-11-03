@@ -263,7 +263,6 @@ export default function rethread(pi: ExtensionAPI) {
 			goal = a.goal;
 			if (a.now) {
 				await ctx.waitForIdle();
-				phase = "write"; // so move() accepts it; saved stays empty -> summary path
 				await move(ctx);
 				return;
 			}
@@ -282,12 +281,6 @@ export default function rethread(pi: ExtensionAPI) {
 		},
 	});
 
-	pi.on("session_start", async () => {
-		phase = "idle";
-		saved = undefined;
-		auto = "ready";
-		kickoffRun = false;
-	});
 
 	// Pi's automatic compaction becomes a rethread: at the threshold, and after a reply that
 	// silently went past the window (reason "overflow", nothing to retry). Left alone: manual
