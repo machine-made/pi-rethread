@@ -3,7 +3,7 @@
 pi-rethread has not had a security review yet.
 
 What it does: it reads and writes one Markdown file (`.pi/ledger.md`, or the path given by
-`--ledger-file`), reads prompt templates from the package and from `.pi/rethread/` in the working
+`--rethread-ledger`), reads prompt templates from the package and from `.pi/rethread/` in the working
 directory, sends prompts to the session's own model, and opens a new Pi session. It makes no network
 call of its own and spawns no process.
 

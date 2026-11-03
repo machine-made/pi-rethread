@@ -11,32 +11,38 @@ Tested with Pi 1.4.0.
 ## Commands
 
 ```text
-/rethread [goal]     finish, hand off, continue in a new session
-/rethread --now      skip the agent (it is stuck): a side model call writes the handoff
+/rethread [goal]     pack, move, continue in a new session
+/rethread --summary  skip the agent (it is stuck): a side model call writes the handoff
 /rethread --cancel   stop a rethread in progress
 /ledger              show the ledger file and its number of entries
 ```
 
 ## What happens
 
-`/rethread` runs four prepared messages, each doing one job:
+`/rethread` moves through wait, pack, move and unpack:
 
-1. **Land.** The running agent finishes the step it is on and stops at a safe point: no half-edited
-   file, no new work, the quick check (tests, build) run once. It replies in three lines: what is
-   *verified*, what is only *assumed*, what is still broken.
-2. **Letter.** The agent writes to the agent of the next session, in a fixed shape:
-   *Where we are*, *Do first*, *Watch out*, *Don't redo* (dead ends, so they are not tried again)
-   and *Trust* (verified vs assumed). The letter comes first: writing to a colleague forces priorities.
-3. **Ledger.** In the same tool call, after the letter, the agent writes the durable facts:
-   Goal, Done, Decisions, Files, Commands, Open problems, Next steps. The letter is intent for the
-   next hop; the ledger is what stays true across many hops. It is appended to `.pi/ledger.md`.
-4. **Readback.** A new session opens (linked to the old one as its parent) and receives the letter
-   and the ledger entry. Its first reply is three lines: the goal, the first action, the main risk.
-   A misunderstanding costs one short reply instead of a whole run.
+1. **Wait**, only if the agent is still working. `/rethread` tells the user to let the agent finish
+   and sends nothing until the run settles, so the handoff is written from a stopped agent. A second
+   `/rethread` during the wait is refused. An idle agent skips this step.
+2. **Pack.** The agent tidies up and stops at a safe point: it finishes a step that needs only a few
+   more actions, starts nothing new, leaves no half-edited file, and runs the quick check (tests,
+   build) once. Then, in one call to the `rethread_pack` tool, it writes a letter to the agent of the
+   next session in a fixed shape: *Where we are*, *Do first*, *Watch out*, *Don't redo* (dead ends,
+   so they are not tried again) and *Trust* (verified vs assumed). In the same call it writes the
+   durable facts: Goal, Done, Decisions, Files, Commands, Open problems, Next steps, opening with a
+   short verified / assumed / still broken line. The letter is intent for the next hop; the entry is
+   what stays true across many hops.
+3. **Move.** The entry is appended to `.pi/ledger.md` and a new session opens, linked to the old one
+   as its parent.
+4. **Unpack.** The new session's first message carries the letter and the entry and asks for a
+   three-line readback: the goal, the first action, the main risk. A misunderstanding costs one short
+   reply instead of a whole run.
 
-The `rethread_save` tool is shown to the model only during step 2.
+The `rethread_pack` tool is shown to the model only during pack.
 
-If the agent does not call the tool, a side model call writes the letter and the ledger from the
+There are three messages: `pack` and `unpack` go to the agents, and `move` is the internal command
+that switches sessions. The summary is a system prompt for the side model, not a message to the
+agent. If the agent does not call the tool, that side model writes the letter and the entry from the
 transcript instead, and the move still happens.
 
 ## Automatic
@@ -59,21 +65,23 @@ so it never loops.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--rethread-auto-percent <n>` | `70` | Context % that starts `/rethread`; `0` turns the automatic rethread off |
-| `--ledger-file <path>` | `.pi/ledger.md` | Ledger file, relative to the working directory |
+| `--rethread-ledger <path>` | `.pi/ledger.md` | Ledger file, relative to the working directory |
 
 ## Your own prompts
 
-The four messages are Markdown templates in [`prompts/`](prompts). Put a file with the same name in
+The messages are Markdown templates in [`prompts/`](prompts). Put a file with the same name in
 `.pi/rethread/` of a project to replace one there:
 
 | File | Sent to | Placeholders |
 |---|---|---|
-| `land.md` | the old agent, step 1 | none |
-| `write.md` | the old agent, step 2 | `{{tool}}` `{{headings}}` `{{goal_line}}` `{{previous}}` |
-| `kickoff.md` | the new agent, step 4 | `{{ledger_path}}` `{{letter}}` `{{goal_line}}` `{{status}}` `{{ledger}}` |
-| `summary.md` | the side model (`--now`, fallback) | `{{headings}}` |
+| `pack.md` | the old agent | `{{tool}}` `{{headings}}` `{{goal_line}}` `{{previous}}` `{{letter_shape}}` |
+| `unpack.md` | the new agent | `{{ledger_path}}` `{{letter}}` `{{goal_line}}` `{{status}}` `{{ledger}}` |
+| `summary.md` | the side model (`--summary`, fallback) | `{{headings}}` `{{letter_shape}}` |
 
-A custom `kickoff.md` must keep a `<rethread-ledger>` tag: it is how the new session knows it was
+The letter shape is defined once, in `LETTER_SHAPE` in `rethread.ts`, and filled into
+`{{letter_shape}}` in both `pack.md` and `summary.md`.
+
+A custom `unpack.md` must keep a `<rethread-ledger>` tag: it is how the new session knows it was
 started by a rethread (for the loop guard).
 
 ## The ledger
