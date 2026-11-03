@@ -6,7 +6,6 @@
  *                        3. move:  the ledger is appended, a new session opens with the letter
  *                        4. readback: the new agent restates goal, first action, main risk, then starts
  *   /rethread --now      skip 1-2 (agent stuck): a side model call writes letter + ledger
- *   /rethread --review   edit the ledger entry before moving (interactive only)
  *   /rethread --cancel   abort a rethread in progress
  *   /ledger              show the ledger path and entry count
  *
@@ -85,7 +84,6 @@ export default function rethread(pi: ExtensionAPI) {
 	// Per-session state. Pi runs this factory again for each new session, so it starts fresh there.
 	let phase: Phase = "idle";
 	let goal = "";
-	let review = false;
 	let saved: Omit<Handoff, "goal" | "source"> | undefined;
 	let autoFired = false;
 	let autoDisabled = false;
@@ -107,7 +105,6 @@ export default function rethread(pi: ExtensionAPI) {
 	const reset = () => {
 		phase = "idle";
 		goal = "";
-		review = false;
 		saved = undefined;
 		setTool(false);
 	};
@@ -212,15 +209,6 @@ export default function rethread(pi: ExtensionAPI) {
 			reset();
 			return;
 		}
-		if (review && ctx.mode === "tui") {
-			const edited = await ctx.ui.editor("Edit the ledger entry", h.ledger);
-			if (edited === undefined) {
-				ctx.ui.notify("rethread: cancelled; nothing written", "info");
-				reset();
-				return;
-			}
-			h.ledger = edited;
-		}
 
 		const file = ledgerFile(ctx.cwd);
 		const oldSession = ctx.sessionManager.getSessionFile();
@@ -275,7 +263,6 @@ export default function rethread(pi: ExtensionAPI) {
 				return;
 			}
 			goal = a.goal;
-			review = a.review;
 			if (a.now) {
 				await ctx.waitForIdle();
 				phase = "write"; // so move() accepts it; saved stays empty -> summary path

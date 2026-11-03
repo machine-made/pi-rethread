@@ -13,7 +13,6 @@ Tested with Pi 1.4.0.
 ```text
 /rethread [goal]     finish, hand off, continue in a new session
 /rethread --now      skip the agent (it is stuck): a side model call writes the handoff
-/rethread --review   edit the ledger entry before moving (interactive only)
 /rethread --cancel   stop a rethread in progress
 /ledger              show the ledger file and its number of entries
 ```

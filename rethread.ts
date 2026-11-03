@@ -9,7 +9,7 @@ export const DEFAULT_AUTO_PERCENT = 70;
 export const TOOL_NAME = "rethread_save";
 export const KICKOFF_TAG = "rethread-ledger";
 export const OVERRIDE_DIR = ".pi/rethread";
-export const USAGE = "Usage: /rethread [goal for the next session] [--now] [--review] [--cancel]";
+export const USAGE = "Usage: /rethread [goal for the next session] [--now] [--cancel]";
 
 export const LEDGER_HEADINGS = ["Goal", "Done", "Decisions", "Files", "Commands", "Open problems", "Next steps"] as const;
 export const STATUSES = ["landed", "partial", "blocked"] as const;
@@ -42,7 +42,6 @@ export function goalLine(goal: string, forNextSession: boolean): string {
 export interface Args {
 	goal: string;
 	now: boolean;
-	review: boolean;
 	cancel: boolean;
 	switchNow: boolean;
 }
@@ -53,7 +52,6 @@ export function parseArgs(raw: string): Args {
 	return {
 		goal: words.filter((w) => !w.startsWith("--")).join(" "),
 		now: flags.has("--now"),
-		review: flags.has("--review"),
 		cancel: flags.has("--cancel"),
 		switchNow: flags.has("--switch"), // internal: sent by the extension itself
 	};

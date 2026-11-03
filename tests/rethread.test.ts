@@ -23,17 +23,16 @@ import {
 const LEDGER = "### Goal\ng\n### Done\nd\n### Decisions\nnone\n### Files\nf\n### Commands\nc\n### Open problems\nnone\n### Next steps\n1. x";
 
 test("parseArgs separates goal and flags", () => {
-	assert.deepEqual(parseArgs("  finish the port --review "), {
+	assert.deepEqual(parseArgs("  finish the port --cancel "), {
 		goal: "finish the port",
 		now: false,
-		review: true,
-		cancel: false,
+		cancel: true,
 		switchNow: false,
 	});
 	assert.equal(parseArgs("--now").now, true);
 	assert.equal(parseArgs("--cancel").cancel, true);
 	assert.equal(parseArgs("").goal, "");
-});
+})
 
 test("parseThreshold: default, explicit, off", () => {
 	assert.equal(parseThreshold(undefined), DEFAULT_AUTO_PERCENT);
