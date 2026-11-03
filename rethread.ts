@@ -3,15 +3,15 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const ENTRY_MARK = "<!-- ledger-entry -->";
-export const DEFAULT_LEDGER = ".pi/ledger.md";
+const ENTRY_MARK = "<!-- ledger-entry -->";
+const DEFAULT_LEDGER = ".pi/ledger.md";
 export const DEFAULT_AUTO_PERCENT = 70;
 export const TOOL_NAME = "rethread_save";
-export const KICKOFF_TAG = "rethread-ledger";
-export const OVERRIDE_DIR = ".pi/rethread";
+const KICKOFF_TAG = "rethread-ledger";
+const OVERRIDE_DIR = ".pi/rethread";
 export const USAGE = "Usage: /rethread [goal for the next session] [--now] [--cancel]";
 
-export const LEDGER_HEADINGS = ["Goal", "Done", "Decisions", "Files", "Commands", "Open problems", "Next steps"] as const;
+const LEDGER_HEADINGS = ["Goal", "Done", "Decisions", "Files", "Commands", "Open problems", "Next steps"] as const;
 export const STATUSES = ["landed", "partial", "blocked"] as const;
 export type Status = (typeof STATUSES)[number];
 
