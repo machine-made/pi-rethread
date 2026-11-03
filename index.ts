@@ -85,10 +85,8 @@ export default function rethread(pi: ExtensionAPI) {
 	let phase: Phase = "idle";
 	let goal = "";
 	let saved: Omit<Handoff, "goal" | "source"> | undefined;
-	let autoFired = false;
-	let autoDisabled = false;
+	let auto: "ready" | "pending" | "fired" | "off" = "ready";
 	let kickoffRun = false;
-	let pendingAuto = false;
 
 	const threshold = () => parseThreshold(pi.getFlag("rethread-auto-percent"));
 	const ledgerFile = (cwd: string) => resolveLedgerPath(cwd, pi.getFlag("ledger-file"));
@@ -287,10 +285,8 @@ export default function rethread(pi: ExtensionAPI) {
 	pi.on("session_start", async () => {
 		phase = "idle";
 		saved = undefined;
-		autoFired = false;
-		autoDisabled = false;
+		auto = "ready";
 		kickoffRun = false;
-		pendingAuto = false;
 	});
 
 	// Pi's automatic compaction becomes a rethread: at the threshold, and after a reply that
@@ -300,8 +296,8 @@ export default function rethread(pi: ExtensionAPI) {
 	pi.on("session_before_compact", async (event) => {
 		if (event.reason === "manual" || event.willRetry) return;
 		if (phase !== "idle") return { cancel: true }; // we are leaving this session anyway
-		if (threshold() <= 0 || autoDisabled || autoFired) return;
-		pendingAuto = true;
+		if (threshold() <= 0 || auto === "off" || auto === "fired") return;
+		auto = "pending";
 		return { cancel: true };
 	});
 
@@ -337,9 +333,8 @@ export default function rethread(pi: ExtensionAPI) {
 		if (kickoffRun) {
 			kickoffRun = false;
 			// Loop guard: a new session already over the limit would rethread forever.
-			if (pendingAuto || (limit > 0 && pct != null && pct >= limit)) {
-				pendingAuto = false;
-				autoDisabled = true;
+			if (auto === "pending" || (limit > 0 && pct != null && pct >= limit)) {
+				auto = "off";
 				ctx.ui.notify(
 					`rethread: context is already ${pct != null ? `${Math.round(pct)}%` : "at Pi's compaction point"} right after the handoff; automatic rethread is off for this session. Raise --rethread-auto-percent or shorten the ledger.`,
 					"warning",
@@ -347,16 +342,16 @@ export default function rethread(pi: ExtensionAPI) {
 			}
 			return;
 		}
-		if (limit <= 0 || autoFired || autoDisabled) return;
-		if (!pendingAuto && (pct == null || pct < limit)) return;
-		autoFired = true;
+		if (limit <= 0 || auto === "fired" || auto === "off") return;
+		if (auto !== "pending" && (pct == null || pct < limit)) return;
+		const wasPending = auto === "pending";
+		auto = "fired";
 		ctx.ui.notify(
-			pendingAuto
+			wasPending
 				? "rethread: Pi would compact now; rethreading instead"
 				: `rethread: context at ${Math.round(pct!)}%; rethreading`,
 			"info",
 		);
-		pendingAuto = false;
 		pi.sendUserMessage("/rethread", { expandPromptTemplates: true });
 	});
 }
