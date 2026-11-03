@@ -1,4 +1,4 @@
-// Pure helpers for pi-rethread: templates, ledger file, kickoff. No Pi runtime imports.
+// Pure helpers for pi-rethread: templates, ledger file, unpack tag. No Pi runtime imports.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,13 +9,13 @@ export const DEFAULT_AUTO_PERCENT = 70;
 export const TOOL_NAME = "rethread_pack";
 const KICKOFF_TAG = "rethread-ledger";
 const OVERRIDE_DIR = ".pi/rethread";
-export const USAGE = "Usage: /rethread [goal for the next session] [--now] [--cancel]";
+export const USAGE = "Usage: /rethread [goal for the next session] [--summary] [--cancel]";
 
 const LEDGER_HEADINGS = ["Goal", "Done", "Decisions", "Files", "Commands", "Open problems", "Next steps"] as const;
 export const STATUSES = ["landed", "partial", "blocked"] as const;
 export type Status = (typeof STATUSES)[number];
 
-export type TemplateName = "pack" | "kickoff" | "summary";
+export type TemplateName = "pack" | "unpack" | "summary";
 
 export const LETTER_SHAPE =
 	"- **Where we are**: two sentences.\n" +
@@ -48,9 +48,9 @@ export function goalLine(goal: string, forNextSession: boolean): string {
 
 export interface Args {
 	goal: string;
-	now: boolean;
+	summary: boolean;
 	cancel: boolean;
-	switchNow: boolean;
+	move: boolean;
 }
 
 export function parseArgs(raw: string): Args {
@@ -58,9 +58,9 @@ export function parseArgs(raw: string): Args {
 	const flags = new Set(words.filter((w) => w.startsWith("--")));
 	return {
 		goal: words.filter((w) => !w.startsWith("--")).join(" "),
-		now: flags.has("--now"),
+		summary: flags.has("--summary"),
 		cancel: flags.has("--cancel"),
-		switchNow: flags.has("--switch"), // internal: sent by the extension itself
+		move: flags.has("--move"), // internal: sent by the extension itself
 	};
 }
 
@@ -133,7 +133,7 @@ export function splitSummary(text: string): { letter: string; ledger: string } {
 	return { letter: m[1].trim(), ledger: m[2].trim() };
 }
 
-export function isKickoff(prompt: string): boolean {
+export function isUnpack(prompt: string): boolean {
 	return prompt.includes(`<${KICKOFF_TAG}`);
 }
 

@@ -9,7 +9,7 @@ import {
 	entryLedger,
 	fill,
 	headingsList,
-	isKickoff,
+	isUnpack,
 	loadTemplate,
 	looksLikeLedger,
 	parseArgs,
@@ -25,11 +25,11 @@ const LEDGER = "### Goal\ng\n### Done\nd\n### Decisions\nnone\n### Files\nf\n###
 test("parseArgs separates goal and flags", () => {
 	assert.deepEqual(parseArgs("  finish the port --cancel "), {
 		goal: "finish the port",
-		now: false,
+		summary: false,
 		cancel: true,
-		switchNow: false,
+		move: false,
 	});
-	assert.equal(parseArgs("--now").now, true);
+	assert.equal(parseArgs("--summary").summary, true);
 	assert.equal(parseArgs("--cancel").cancel, true);
 	assert.equal(parseArgs("").goal, "");
 })
@@ -78,13 +78,13 @@ test("readEntries on a missing file", () => {
 
 test("templates: packaged ones load and fill; project override wins", () => {
 	const dir = mkdtempSync(join(tmpdir(), "rethread-tpl-"));
-	for (const name of ["pack", "kickoff", "summary"] as const) assert.ok(loadTemplate(name, dir).length > 50, name);
-	const pack = fill(loadTemplate("pack", dir), { tool: "rethread_save", headings: headingsList(), goal_line: "G", previous: "(none)", letter_shape: "SHAPE" });
+	for (const name of ["pack", "unpack", "summary"] as const) assert.ok(loadTemplate(name, dir).length > 50, name);
+	const pack = fill(loadTemplate("pack", dir), { tool: "rethread_pack", headings: headingsList(), goal_line: "G", previous: "(none)", letter_shape: "SHAPE" });
 	assert.ok(!/\{\{\w+\}\}/.test(pack), "all placeholders filled");
 	assert.ok(pack.indexOf("letter") < pack.indexOf("**`entry`**"), "letter is asked for before the entry");
-	const kick = fill(loadTemplate("kickoff", dir), { ledger_path: "p", letter: "L", goal_line: "G", status: "landed", ledger: LEDGER });
-	assert.ok(isKickoff(kick));
-	assert.ok(!/\{\{\w+\}\}/.test(kick));
+	const unpack = fill(loadTemplate("unpack", dir), { ledger_path: "p", letter: "L", goal_line: "G", status: "landed", ledger: LEDGER });
+	assert.ok(isUnpack(unpack));
+	assert.ok(!/\{\{\w+\}\}/.test(unpack));
 	mkdirSync(join(dir, ".pi", "rethread"), { recursive: true });
 	writeFileSync(join(dir, ".pi", "rethread", "pack.md"), "MY PACK");
 	assert.equal(loadTemplate("pack", dir), "MY PACK");

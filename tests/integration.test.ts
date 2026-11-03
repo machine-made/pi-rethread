@@ -155,15 +155,15 @@ test("agent ignores the write request: summary fallback still moves", async () =
 	}
 });
 
-test("/rethread --now skips the agent", async () => {
+test("/rethread --summary skips the agent", async () => {
 	const cwd = tmp("c");
 	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
 	try {
 		const s0 = await pi.prompt("Start");
-		const s1 = await pi.prompt("/rethread --now", 2500);
+		const s1 = await pi.prompt("/rethread --summary", 2500);
 		assert.notEqual(s1.sessionFile, s0.sessionFile);
 		const old = readFileSync(s0.sessionFile, "utf8");
-		assert.ok(!old.includes("[rethread 1/2"), "no land/write turns");
+		assert.ok(!old.includes("[rethread: pack]"), "no pack turn");
 		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /SUMMARY/);
 	} finally {
 		pi.close();
@@ -269,13 +269,14 @@ test("project templates in .pi/rethread override the packaged ones", async () =>
 	const cwd = tmp("h");
 	const { writeFileSync } = await import("node:fs");
 	mkdirSync(join(cwd, ".pi", "rethread"), { recursive: true });
-	writeFileSync(join(cwd, ".pi", "rethread", "kickoff.md"), "CUSTOM KICKOFF {{letter}} <rethread-ledger>{{ledger}}</rethread-ledger>");
+	writeFileSync(join(cwd, ".pi", "rethread", "pack.md"), "[rethread: pack] CUSTOM PACK {{tool}} {{letter_shape}}");
 	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
 	try {
-		await pi.prompt("Start");
-		await pi.prompt("/rethread", 2500);
-		const users = await pi.userMessages();
-		assert.match(users[0], /CUSTOM KICKOFF You: LETTER-1/);
+		const s0 = await pi.prompt("Start");
+		const s1 = await pi.prompt("/rethread", 2500);
+		assert.ok(readFileSync(s0.sessionFile, "utf8").includes("CUSTOM PACK rethread_pack"), "the project pack.md was used");
+		assert.notEqual(s1.sessionFile, s0.sessionFile, "the move still happened");
+		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /AGENT-1/);
 	} finally {
 		pi.close();
 	}

@@ -1,11 +1,11 @@
 /**
  * pi-rethread — end this session cleanly and continue in a new one.
  *
- *   /rethread [goal]     1. land:  the agent finishes its step and says what is verified
- *                        2. write: the agent writes a letter to the next session, then a ledger entry
- *                        3. move:  the ledger is appended, a new session opens with the letter
- *                        4. readback: the new agent restates goal, first action, main risk, then starts
- *   /rethread --now      skip 1-2 (agent stuck): a side model call writes letter + ledger
+ *   /rethread [goal]     wait (only if the agent is busy), then:
+ *                        pack:   the agent tidies up, writes a letter to the next session and a ledger entry
+ *                        move:   the ledger is appended, a new session opens with the letter
+ *                        unpack: the new agent restates goal, first action, main risk, then starts
+ *   /rethread --summary  skip the agent (it is stuck): a side model call writes the letter and the entry
  *   /rethread --cancel   abort a rethread in progress
  *   /ledger              show the ledger path and entry count
  *
@@ -28,7 +28,7 @@ import {
 	goalLine,
 	type Handoff,
 	headingsList,
-	isKickoff,
+	isUnpack,
 	loadTemplate,
 	looksLikeLedger,
 	LETTER_SHAPE,
@@ -76,7 +76,7 @@ function branchMessages(branch: SessionEntry[]): AgentMessage[] {
 }
 
 export default function rethread(pi: ExtensionAPI) {
-	pi.registerFlag("ledger-file", { type: "string", description: "Ledger file (default .pi/ledger.md)" });
+	pi.registerFlag("rethread-ledger", { type: "string", description: "Ledger file (default .pi/ledger.md)" });
 	pi.registerFlag("rethread-auto-percent", {
 		type: "string",
 		description: "Start /rethread at this context % (default 70; 0 = off)",
@@ -87,10 +87,9 @@ export default function rethread(pi: ExtensionAPI) {
 	let goal = "";
 	let saved: Omit<Handoff, "goal" | "source"> | undefined;
 	let auto: "ready" | "pending" | "fired" | "off" = "ready";
-	let kickoffRun = false;
-
+	let unpackRun = false;
 	const threshold = () => parseThreshold(pi.getFlag("rethread-auto-percent"));
-	const ledgerFile = (cwd: string) => resolveLedgerPath(cwd, pi.getFlag("ledger-file"));
+	const ledgerFile = (cwd: string) => resolveLedgerPath(cwd, pi.getFlag("rethread-ledger"));
 	const previousLedger = (cwd: string) => {
 		const last = readEntries(ledgerFile(cwd)).at(-1);
 		return last ? entryLedger(last) : "";
@@ -144,7 +143,7 @@ export default function rethread(pi: ExtensionAPI) {
 		},
 	});
 
-	/** Side model call: letter + ledger from the transcript (used by --now and as a fallback). */
+	/** Side model call: letter + entry from the transcript (used by --summary and as a fallback). */
 	async function summarize(ctx: ExtensionCommandContext): Promise<{ letter: string; ledger: string } | null> {
 		const messages = branchMessages(ctx.sessionManager.getBranch());
 		if (messages.length === 0 || !ctx.model) return null;
@@ -188,7 +187,7 @@ export default function rethread(pi: ExtensionAPI) {
 		});
 	}
 
-	/** Step 3: append the ledger, open the new session, send the kickoff. Command context only. */
+	/** Move: append the entry, open the new session, send the unpack message. Command context only. */
 	async function move(ctx: ExtensionCommandContext): Promise<void> {
 		phase = "move";
 		setTool(false);
@@ -208,7 +207,7 @@ export default function rethread(pi: ExtensionAPI) {
 		const file = ledgerFile(ctx.cwd);
 		const oldSession = ctx.sessionManager.getSessionFile();
 		const n = appendEntry(file, oldSession, h);
-		const kickoff = fill(loadTemplate("kickoff", ctx.cwd), {
+		const unpack = fill(loadTemplate("unpack", ctx.cwd), {
 			ledger_path: shownPath(file, ctx.cwd),
 			letter: h.letter.trim() || "(none)",
 			goal_line: goalLine(h.goal, false),
@@ -223,14 +222,14 @@ export default function rethread(pi: ExtensionAPI) {
 			withSession: async (next) => {
 				next.ui.notify(`Ledger entry ${n} written; new session started`, "info");
 				// Not awaited: the run would hold the switch open until it ends.
-				next.sendUserMessage(kickoff).catch((err) => console.error("rethread: kickoff failed:", err));
+				next.sendUserMessage(unpack).catch((err) => console.error("rethread: unpack failed:", err));
 			},
 		});
 		if (result.cancelled) ctx.ui.notify(`Ledger entry ${n} written, but the new session was cancelled`, "warning");
 	}
 
 	pi.registerCommand("rethread", {
-		description: "Finish, write a letter and a ledger entry, continue in a new session",
+		description: "End this session cleanly: pack a letter and an entry, move to a new session",
 		handler: async (raw, ctx) => {
 			const a = parseArgs(raw);
 			if (a.cancel) {
@@ -241,7 +240,7 @@ export default function rethread(pi: ExtensionAPI) {
 				}
 				return;
 			}
-			if (a.switchNow) {
+			if (a.move) {
 				if (phase === "pack") await move(ctx);
 				return;
 			}
@@ -258,7 +257,7 @@ export default function rethread(pi: ExtensionAPI) {
 				return;
 			}
 			goal = a.goal;
-			if (a.now) {
+			if (a.summary) {
 				await ctx.waitForIdle();
 				await move(ctx);
 				return;
@@ -310,7 +309,7 @@ export default function rethread(pi: ExtensionAPI) {
 	});
 
 	pi.on("before_agent_start", async (event) => {
-		if (event.messageType === "user" && isKickoff(event.prompt)) kickoffRun = true;
+		if (event.messageType === "user" && isUnpack(event.prompt)) unpackRun = true;
 	});
 
 	pi.on("agent_settled", async (_event, ctx) => {
@@ -321,15 +320,15 @@ export default function rethread(pi: ExtensionAPI) {
 		}
 		if (phase === "pack") {
 			ctx.ui.notify("rethread: move", "info");
-			pi.sendUserMessage("/rethread --switch", { expandPromptTemplates: true });
+			pi.sendUserMessage("/rethread --move", { expandPromptTemplates: true });
 			return;
 		}
 		if (phase !== "idle") return;
 
 		const limit = threshold();
 		const pct = ctx.getContextUsage()?.percent;
-		if (kickoffRun) {
-			kickoffRun = false;
+		if (unpackRun) {
+			unpackRun = false;
 			// Loop guard: a new session already over the limit would rethread forever.
 			if (auto === "pending" || (limit > 0 && pct != null && pct >= limit)) {
 				auto = "off";
