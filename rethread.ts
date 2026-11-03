@@ -7,7 +7,7 @@ const ENTRY_MARK = "<!-- ledger-entry -->";
 const DEFAULT_LEDGER = ".pi/ledger.md";
 export const DEFAULT_AUTO_PERCENT = 70;
 export const TOOL_NAME = "rethread_pack";
-const KICKOFF_TAG = "rethread-ledger";
+const UNPACK_TAG = "rethread-ledger";
 const OVERRIDE_DIR = ".pi/rethread";
 export const USAGE = "Usage: /rethread [goal for the next session] [--summary] [--cancel]";
 
@@ -134,7 +134,7 @@ export function splitSummary(text: string): { letter: string; ledger: string } {
 }
 
 export function isUnpack(prompt: string): boolean {
-	return prompt.includes(`<${KICKOFF_TAG}`);
+	return prompt.includes(`<${UNPACK_TAG}`);
 }
 
 /** A usable ledger has most of the expected headings. */
