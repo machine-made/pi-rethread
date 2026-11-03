@@ -1,7 +1,7 @@
 // Test-only Pi extension: a scripted model, so the integration test runs real Pi with no API calls.
 // Env: FAKE_CTX (context window), FAKE_PAD (chars of padding in ordinary replies),
-//      FAKE_TPS (simulated typing speed), FAKE_SKIP_TOOL=1 (the agent ignores the write request, to exercise the
-//      fallback), FAKE_REJECT_WRITE=1 (the provider rejects the first write request as too long).
+//      FAKE_TPS (simulated typing speed), FAKE_SKIP_TOOL=1 (the agent ignores the pack request, to exercise the
+//      fallback), FAKE_REJECT_WRITE=1 (the provider rejects the first pack request as too long).
 import { createFauxCore, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 

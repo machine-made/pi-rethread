@@ -95,7 +95,7 @@ class Pi {
 const tmp = (tag: string) => mkdtempSync(join(tmpdir(), `rethread-${tag}-`));
 const entries = (ledger: string) => (existsSync(ledger) ? readFileSync(ledger, "utf8").split("<!-- ledger-entry -->").length - 1 : 0);
 
-test("/rethread: land, letter + ledger by the agent, new session, readback", async () => {
+test("/rethread: pack, letter + ledger by the agent, new session, readback", async () => {
 	const cwd = tmp("a");
 	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
 	try {
@@ -115,7 +115,7 @@ test("/rethread: land, letter + ledger by the agent, new session, readback", asy
 		// In the new flow, the agent calls the tool directly without a separate "LANDED" text response
 
 		const users = await pi.userMessages();
-		assert.equal(users.length, 1, "new session starts with the kickoff only");
+		assert.equal(users.length, 1, "new session starts with the unpack only");
 		assert.match(users[0], /Letter from the previous session's agent/);
 		assert.match(users[0], /LETTER-1/);
 		assert.match(users[0], /3-line readback/);
@@ -126,7 +126,7 @@ test("/rethread: land, letter + ledger by the agent, new session, readback", asy
 		// Second rethread builds on the first entry.
 		const s2 = await pi.prompt("/rethread", 2500);
 		assert.equal(entries(ledger), 2);
-		assert.match(readFileSync(ledger, "utf8").split("<!-- ledger-entry -->")[2], /saw-previous/, "the write prompt carried the previous ledger");
+		assert.match(readFileSync(ledger, "utf8").split("<!-- ledger-entry -->")[2], /saw-previous/, "the pack prompt carried the previous ledger");
 		assert.notEqual(s2.sessionFile, s1.sessionFile);
 		assert.ok(!readdirSync(join(cwd, ".pi")).some((f) => f.endsWith(".tmp")), "no temp file left");
 
@@ -137,7 +137,72 @@ test("/rethread: land, letter + ledger by the agent, new session, readback", asy
 	}
 });
 
-test("agent ignores the write request: summary fallback still moves", async () => {
+test("/rethread while the agent is busy: wait, then pack; a second /rethread is refused", async () => {
+	const cwd = tmp("w");
+	const pi = new Pi(cwd, { FAKE_TPS: "20", FAKE_PAD: "400" }, ["--rethread-auto-percent", "0"]);
+	try {
+		await pi.call("prompt", { message: "Start" });
+		const s0 = (await pi.call("get_state")).data;
+		await sleep(300); // the run is still streaming
+		await pi.call("prompt", { message: "/rethread" });
+		assert.ok(pi.notes().some((n) => n.includes("letting the agent finish")), "the user is told to wait");
+		assert.ok(!readFileSync(s0.sessionFile, "utf8").includes("[rethread: pack]"), "no pack while the run is busy");
+		await pi.call("prompt", { message: "/rethread" });
+		assert.ok(
+			pi.notes().some((n) => n.includes("already in progress (wait)")),
+			"a second /rethread during the wait is refused",
+		);
+		const s1 = await pi.idle(3000);
+		const notes = pi.notes();
+		assert.ok(readFileSync(s0.sessionFile, "utf8").includes("[rethread: pack]"), "the pack message was sent");
+		assert.ok(
+			notes.indexOf("rethread: letting the agent finish; do not send new instructions until the handoff is done") <
+				notes.indexOf("rethread: pack"),
+			"pack starts only after the wait",
+		);
+		assert.notEqual(s1.sessionFile, s0.sessionFile, "the move happened");
+		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /written by the agent/);
+	} finally {
+		pi.close();
+	}
+});
+
+test("/rethread while idle: the pack message is sent at once", async () => {
+	const cwd = tmp("i");
+	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
+	try {
+		const s0 = await pi.prompt("Start");
+		const s1 = await pi.prompt("/rethread", 2500);
+		assert.ok(pi.notes().some((n) => n.includes("rethread: pack")), "pack started");
+		assert.ok(!pi.notes().some((n) => n.includes("letting the agent finish")), "no wait when idle");
+		assert.ok(readFileSync(s0.sessionFile, "utf8").includes("[rethread: pack]"));
+		assert.notEqual(s1.sessionFile, s0.sessionFile);
+		assert.match(readFileSync(join(cwd, ".pi", "ledger.md"), "utf8"), /written by the agent/);
+	} finally {
+		pi.close();
+	}
+});
+
+test("the pack message carries the tidy-up and the letter shape", async () => {
+	const cwd = tmp("p");
+	const pi = new Pi(cwd, {}, ["--rethread-auto-percent", "0"]);
+	try {
+		const s0 = await pi.prompt("Start");
+		await pi.prompt("/rethread", 2500);
+		const old = readFileSync(s0.sessionFile, "utf8");
+		assert.match(old, /Tidy up now/);
+		assert.match(old, /Do not start anything new/);
+		assert.match(old, /TODO\(rethread\)/);
+		for (const part of ["Where we are", "Do first", "Watch out", "Don't redo", "Trust"]) {
+			assert.ok(old.includes(`**${part}**`), `letter shape names ${part}`);
+		}
+		assert.match(old, /rethread_pack/, "the pack message names the tool");
+	} finally {
+		pi.close();
+	}
+});
+
+test("agent ignores the pack request: summary fallback still moves", async () => {
 	const cwd = tmp("b");
 	const pi = new Pi(cwd, { FAKE_SKIP_TOOL: "1" }, ["--rethread-auto-percent", "0"]);
 	try {
@@ -203,7 +268,7 @@ test("Pi's auto-compaction is replaced by a rethread", async () => {
 
 test("a reply past the whole window (silent overflow): rethread, no compaction mid-handoff", async () => {
 	// A 70k-token reply in a 60k window: Pi first tries "threshold", then "overflow" with nothing to
-	// retry after the land reply. Neither may compact the old session while the agent writes its letter.
+	// retry after the pack reply. Neither may compact the old session while the agent writes its letter.
 	const cwd = tmp("o");
 	const pi = new Pi(cwd, { FAKE_CTX: "60000", FAKE_PAD: "280000" });
 	try {
@@ -218,7 +283,7 @@ test("a reply past the whole window (silent overflow): rethread, no compaction m
 	}
 });
 
-test("the provider rejects the write as too long: Pi's recovery compacts, retries, the move still happens", async () => {
+test("the provider rejects the pack as too long: Pi's recovery compacts, retries, the move still happens", async () => {
 	const cwd = tmp("r");
 	const pi = new Pi(cwd, { FAKE_REJECT_WRITE: "1", FAKE_PAD: "160000" }, ["--rethread-auto-percent", "0"]); // ~40k tokens: enough history for Pi to compact
 	try {

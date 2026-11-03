@@ -10,6 +10,7 @@ import {
 	fill,
 	headingsList,
 	isUnpack,
+	LETTER_SHAPE,
 	loadTemplate,
 	looksLikeLedger,
 	parseArgs,
@@ -90,6 +91,18 @@ test("templates: packaged ones load and fill; project override wins", () => {
 	assert.equal(loadTemplate("pack", dir), "MY PACK");
 	assert.equal(fill("a {{x}} {{unknown}}", { x: "1" }), "a 1 {{unknown}}");
 })
+
+test("the letter shape has one source: pack and summary use LETTER_SHAPE", () => {
+	const dir = mkdtempSync(join(tmpdir(), "rethread-shape-"));
+	const shape = "SHAPE LINE";
+	const pack = fill(loadTemplate("pack", dir), { letter_shape: shape });
+	const summary = fill(loadTemplate("summary", dir), { letter_shape: shape });
+	assert.ok(pack.includes(shape), "pack fills {{letter_shape}}");
+	assert.ok(summary.includes(shape), "summary fills {{letter_shape}}");
+	assert.ok(!pack.includes("**Trust**"), "pack does not repeat the shape text");
+	assert.ok(!summary.includes("**Trust**"), "summary does not repeat the shape text");
+	assert.ok(LETTER_SHAPE.includes("**Trust**"), "LETTER_SHAPE is the one place the parts are listed");
+});
 
 test("splitSummary and looksLikeLedger", () => {
 	const s = splitSummary(`## Letter\nYou: hi\n\n## Ledger\n${LEDGER}`);
