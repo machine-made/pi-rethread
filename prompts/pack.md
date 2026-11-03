@@ -11,7 +11,7 @@ Now write the handoff with one call to the `{{tool}}` tool. Fill the fields in t
 **`letter`**: a letter from you to the agent of the next session. Write it to them ("You..."), short, in this shape:
 {{letter_shape}}
 
-**`entry`**: durable facts that stay true across many sessions. Self-contained: the next agent has no access to this conversation. Use exactly these headings, in this order, and write "none" under a heading with nothing to say:
+**`entry`**: start with one short line naming what is **Verified**, what is **Assumed** and what is **Still broken**, then the durable facts that stay true across many sessions. Self-contained: the next agent has no access to this conversation. Use exactly these headings, in this order, and write "none" under a heading with nothing to say:
 {{headings}}
 Carry over what is still true from the previous entry; drop what is finished or obsolete. Be specific: exact paths, commands, numbers, error messages.
 
