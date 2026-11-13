@@ -1,4 +1,4 @@
-# Public repo: CodeRabbit reviews the opening push of non-draft PRs not authored by dependabot[bot] or renovate[bot] (jac decision 0048); later pushes on request (@coderabbitai review).
+# Public repo: CodeRabbit reviews the opening push of non-draft PRs not authored by dependabot[bot] or renovate[bot]; later pushes on request (@coderabbitai review).
 inheritance: true
 reviews:
   auto_review:
