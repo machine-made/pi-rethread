@@ -1,4 +1,4 @@
-# Public repo: CodeRabbit reviews the opening push of every PR (jac decision 0048); later pushes on request (@coderabbitai review).
+# Public repo: CodeRabbit reviews the opening push of eligible non-draft, non-bot PRs (jac decision 0048); later pushes on request (@coderabbitai review).
 inheritance: true
 reviews:
   auto_review:
