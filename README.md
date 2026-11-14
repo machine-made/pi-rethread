@@ -1,3 +1,5 @@
+![pi-rethread banner](https://raw.githubusercontent.com/machine-made/pi-rethread/main/assets/readme-banner-v3.jpg)
+
 [![CI](https://github.com/machine-made/pi-rethread/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/machine-made/pi-rethread/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@machine-made/pi-rethread.svg)](https://www.npmjs.com/package/@machine-made/pi-rethread)
 [![Node](https://img.shields.io/node/v/@machine-made/pi-rethread.svg)](https://www.npmjs.com/package/@machine-made/pi-rethread)
