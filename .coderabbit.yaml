@@ -1,4 +1,4 @@
-# Public repo: CodeRabbit reviews every PR (jac decision 0048); the org default is request only.
+# Public repo: CodeRabbit reviews the opening push of non-draft PRs not authored by dependabot[bot] or renovate[bot]; later pushes on request (@coderabbitai review).
 inheritance: true
 reviews:
   auto_review:
