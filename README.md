@@ -1,6 +1,11 @@
-# pi-rethread
+![pi-rethread banner](https://raw.githubusercontent.com/machine-made/pi-rethread/main/assets/readme-banner-v3.jpg)
 
-Extension for [pi](https://github.com/earendil-works/pi): when a session gets long, the agent finishes its step, writes a **letter** to the next session and a **ledger** entry, and the work continues in a **fresh session**. No lossy compaction.
+[![CI](https://github.com/machine-made/pi-rethread/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/machine-made/pi-rethread/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@machine-made/pi-rethread.svg)](https://www.npmjs.com/package/@machine-made/pi-rethread)
+[![Node](https://img.shields.io/node/v/@machine-made/pi-rethread.svg)](https://www.npmjs.com/package/@machine-made/pi-rethread)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+`pi-rethread` is an extension for [pi](https://github.com/earendil-works/pi): when a session gets long, the agent finishes its step, writes a **letter** to the next session and a **ledger** entry, and the work continues in a **fresh session**. No lossy compaction.
 
 ```text
 pi install npm:@machine-made/pi-rethread
