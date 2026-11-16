@@ -5,7 +5,7 @@
 [![Node](https://img.shields.io/node/v/@machine-made/pi-rethread.svg)](https://www.npmjs.com/package/@machine-made/pi-rethread)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-`pi-rethread` is an extension for [pi](https://github.com/earendil-works/pi): when a session gets long, the agent finishes its step, writes a **letter** to the next session and a **ledger** entry, and the work continues in a **fresh session**. No lossy compaction.
+`pi-rethread` is an extension for [pi](https://github.com/earendil-works/pi). When a session gets long, the agent finishes its step. It writes a **letter** to the next session and a **ledger** entry. The work continues in a **fresh session**. There is no lossy compaction.
 
 ```text
 pi install npm:@machine-made/pi-rethread
